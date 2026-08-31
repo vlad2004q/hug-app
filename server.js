@@ -19,10 +19,13 @@ const messageQueue = { boy: [], girl: [] };
 const photos = { boy: [], girl: [] };
 
 // Счётчики
-const counters = { hugs: 0, love: 0, flowers: 0, hands: 0, songs: 0, compliments: 0, miss: 0, goodnight: 0 };
+let counters = { hugs: 0, love: 0, flowers: 0, hands: 0, songs: 0, compliments: 0, miss: 0, goodnight: 0 };
 
 // Капсулы времени
 const timeCapsules = { boy: [], girl: [] };
+
+// Рисование
+let drawingData = [];
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
@@ -39,8 +42,7 @@ async function sendTelegramNotification(receiverId, hugType) {
         'song': '🎵 Тебе отправили мелодию!',
         'love': '❤️ Тебе отправили признание в любви!',
         'miss': '🥺 По тебе скучают!',
-        'goodnight': '🌙 Тебе желают спокойной ночи!',
-        'kiss': '💋 Тебе отправили поцелуй!'
+        'goodnight': '🌙 Тебе желают спокойной ночи!'
     };
     try {
         await bot.telegram.sendMessage(receiverId, messages[hugType] || messages['hug'], {
@@ -93,7 +95,7 @@ io.on('connection', (socket) => {
         }
         
         socket.emit('stats_update', counters);
-        socket.emit('capsules_update', { boy: timeCapsules.boy, girl: timeCapsules.girl });
+        socket.emit('drawing_init', drawingData);
     });
 
     socket.on('send_hug', (data) => {
@@ -101,8 +103,8 @@ io.on('connection', (socket) => {
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
-        // Обновляем счётчики
         if (counters[hugType] !== undefined) counters[hugType]++;
+        console.log('Counters:', counters);
         
         const receiverSocket = activeUsers.get(receiverId);
         if (receiverSocket) {
@@ -114,8 +116,6 @@ io.on('connection', (socket) => {
         
         sendTelegramNotification(receiverId, hugType);
         socket.emit('hug_sent', { success: true });
-        
-        // Отправляем обновлённые счётчики всем
         io.emit('stats_update', counters);
     });
 
@@ -150,7 +150,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Капсула времени
     socket.on('create_capsule', (data) => {
         const { senderId, receiverId, message, openDate } = data;
         const boyId = Number(process.env.BOYFRIEND_ID);
@@ -166,53 +165,20 @@ io.on('connection', (socket) => {
             opened: false
         };
         
-        if (receiverId === boyId) {
-            timeCapsules.boy.push(capsule);
-        } else if (receiverId === girlId) {
-            timeCapsules.girl.push(capsule);
-        }
+        if (receiverId === boyId) timeCapsules.boy.push(capsule);
+        else if (receiverId === girlId) timeCapsules.girl.push(capsule);
         
         socket.emit('capsule_created', { success: true });
-        io.emit('capsules_update', { boy: timeCapsules.boy, girl: timeCapsules.girl });
     });
 
-    socket.on('check_capsules', (data) => {
-        const { userId } = data;
-        const boyId = Number(process.env.BOYFRIEND_ID);
-        const girlId = Number(process.env.GIRLFRIEND_ID);
-        
-        let userCapsules = [];
-        if (userId === boyId) {
-            userCapsules = timeCapsules.boy;
-        } else if (userId === girlId) {
-            userCapsules = timeCapsules.girl;
-        }
-        
-        const now = Date.now();
-        const openable = userCapsules.filter(c => !c.opened && c.openDate <= now);
-        const locked = userCapsules.filter(c => !c.opened && c.openDate > now);
-        
-        socket.emit('capsules_status', { openable, locked });
+    socket.on('draw', (data) => {
+        drawingData.push(data);
+        socket.broadcast.emit('draw', data);
     });
 
-    socket.on('open_capsule', (data) => {
-        const { userId, capsuleId } = data;
-        const boyId = Number(process.env.BOYFRIEND_ID);
-        const girlId = Number(process.env.GIRLFRIEND_ID);
-        
-        let userCapsules = [];
-        if (userId === boyId) {
-            userCapsules = timeCapsules.boy;
-        } else if (userId === girlId) {
-            userCapsules = timeCapsules.girl;
-        }
-        
-        const capsule = userCapsules.find(c => c.id === capsuleId);
-        if (capsule && !capsule.opened && capsule.openDate <= Date.now()) {
-            capsule.opened = true;
-            socket.emit('capsule_opened', { message: capsule.message, from: capsule.from });
-            io.emit('capsules_update', { boy: timeCapsules.boy, girl: timeCapsules.girl });
-        }
+    socket.on('clear_drawing', () => {
+        drawingData = [];
+        io.emit('drawing_cleared');
     });
 
     socket.on('disconnect', () => {

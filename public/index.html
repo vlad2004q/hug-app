@@ -53,16 +53,6 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-        .cloud {
-            position: absolute;
-            font-size: 40px;
-            opacity: 0.3;
-            animation: cloudMove 30s linear infinite;
-        }
-        @keyframes cloudMove {
-            0% { transform: translateX(-100px); }
-            100% { transform: translateX(calc(100vw + 100px)); }
-        }
         .container {
             text-align: center;
             padding: 20px;
@@ -79,15 +69,16 @@
         .days-counter {
             font-size: 14px;
             color: var(--text);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             opacity: 0.8;
         }
         .stats-bar {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
             margin-bottom: 20px;
             flex-wrap: wrap;
+            min-height: 30px;
         }
         .stat-item {
             background: var(--card);
@@ -196,19 +187,9 @@
             0% { opacity: 1; transform: translateY(0) scale(0.5); }
             100% { opacity: 0; transform: translateY(-80vh) scale(1.2); }
         }
-        .sad-particle {
-            position: absolute;
-            animation: sadFloat 3s ease-out forwards;
-            font-size: 30px;
-        }
-        @keyframes sadFloat {
-            0% { opacity: 0; transform: translateY(0) scale(0.5); }
-            30% { opacity: 1; }
-            100% { opacity: 0; transform: translateY(-60vh) scale(1); }
-        }
         .app-notification {
             position: fixed;
-            top: 20px;
+            top: 80px; /* изменено с 20px на 80px для iPhone с чёлкой */
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: var(--card);
@@ -224,6 +205,59 @@
             text-align: center;
         }
         .app-notification.show { transform: translateX(-50%) translateY(0); }
+        .game-area {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 35;
+            display: none;
+            background: rgba(0,0,0,0.5);
+            touch-action: manipulation;
+        }
+        .game-area.active { display: block; }
+        .game-heart {
+            position: absolute;
+            font-size: 40px;
+            cursor: pointer;
+            animation: gameHeart 2s linear forwards;
+            pointer-events: auto;
+            z-index: 36;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes gameHeart {
+            0% { transform: translateY(-50px); opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 1; }
+        }
+        .game-score {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: white;
+            z-index: 37;
+            font-weight: bold;
+        }
+        .game-home-btn {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            z-index: 38;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.8);
+            color: #d44a6a;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
         .capsule-modal {
             position: fixed;
             top: 50%;
@@ -256,35 +290,55 @@
             cursor: pointer;
             margin: 5px;
         }
-        .game-area {
+        .drawing-modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 35;
+            z-index: 45;
             display: none;
-            background: rgba(0,0,0,0.5);
+            background: var(--bg);
         }
-        .game-area.active { display: block; }
-        .game-heart {
-            position: absolute;
-            font-size: 30px;
-            cursor: pointer;
-            animation: gameHeart 2s linear forwards;
+        .drawing-modal.active { display: block; }
+        .drawing-canvas {
+            width: 100%;
+            height: calc(100% - 60px);
+            cursor: crosshair;
+            touch-action: none;
         }
-        @keyframes gameHeart {
-            0% { transform: translateY(-50px); opacity: 1; }
-            100% { transform: translateY(100vh); opacity: 1; }
-        }
-        .game-score {
+        .drawing-controls {
             position: fixed;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 24px;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding: 10px;
+            background: var(--card);
+            z-index: 46;
+        }
+        .drawing-controls button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background: #ff6b8a;
             color: white;
-            z-index: 36;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .color-picker {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        .color-dot {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
         }
     </style>
 </head>
@@ -298,6 +352,7 @@
     <div class="app-notification" id="appNotification"></div>
     <div class="game-area" id="gameArea">
         <div class="game-score" id="gameScore">Очки: 0</div>
+        <button class="game-home-btn" id="gameHomeBtn">🏠 Домой</button>
     </div>
     <div class="capsule-modal" id="capsuleModal">
         <h3>💌 Капсула времени</h3>
@@ -306,6 +361,20 @@
         <div>
             <button onclick="sendCapsule()">Отправить</button>
             <button onclick="closeCapsuleModal()">Закрыть</button>
+        </div>
+    </div>
+    <div class="drawing-modal" id="drawingModal">
+        <canvas class="drawing-canvas" id="drawingCanvas"></canvas>
+        <div class="drawing-controls">
+            <div class="color-picker">
+                <div class="color-dot" style="background:#ff6b8a" onclick="setColor('#ff6b8a')"></div>
+                <div class="color-dot" style="background:#ffd700" onclick="setColor('#ffd700')"></div>
+                <div class="color-dot" style="background:#4fc3f7" onclick="setColor('#4fc3f7')"></div>
+                <div class="color-dot" style="background:#81c784" onclick="setColor('#81c784')"></div>
+                <div class="color-dot" style="background:#ce93d8" onclick="setColor('#ce93d8')"></div>
+            </div>
+            <button onclick="clearDrawing()">🗑️ Очистить</button>
+            <button onclick="closeDrawing()">✖️ Закрыть</button>
         </div>
     </div>
     
@@ -329,6 +398,7 @@
             <button class="tenderness-btn" data-type="photo">📸 Фото</button>
             <button class="tenderness-btn" data-type="capsule">⏳ Капсула</button>
             <button class="tenderness-btn" data-type="game">🎮 Игра</button>
+            <button class="tenderness-btn" data-type="draw">🎨 Рисовать</button>
         </div>
 
         <div class="reaction" id="reaction"></div>
@@ -346,6 +416,9 @@
         let gameActive = false;
         let gameScore = 0;
         let gameInterval = null;
+        let currentColor = '#ff6b8a';
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
 
         const boyId = 1449436021;
         const girlId = 5126602356;
@@ -402,7 +475,7 @@
 
         function playGoodnightSound() {
             [392.00, 349.23, 329.63, 293.66].forEach((note, i) => {
-                setTimeout(() => playPrettySound(note, 0.8, 'sine'), i * 400);
+                setTimeout(() => playPrettySound(note, 0.8), i * 400);
             });
             setTimeout(() => playPrettySound(261.63, 1.5), 1600);
         }
@@ -489,7 +562,6 @@
             }
         }
 
-        // Создание звёзд и облаков
         function createBackground() {
             const starsContainer = document.getElementById('stars');
             for (let i = 0; i < 50; i++) {
@@ -502,25 +574,14 @@
                 star.style.animationDelay = Math.random() * 3 + 's';
                 starsContainer.appendChild(star);
             }
-            setInterval(() => {
-                const cloud = document.createElement('div');
-                cloud.className = 'cloud';
-                cloud.textContent = '☁️';
-                cloud.style.top = Math.random() * 50 + '%';
-                cloud.style.animationDuration = (20 + Math.random() * 20) + 's';
-                starsContainer.appendChild(cloud);
-                setTimeout(() => cloud.remove(), 40000);
-            }, 5000);
         }
 
-        // Тёмная тема
         document.getElementById('themeBtn').addEventListener('click', () => {
             document.body.classList.toggle('dark-theme');
             document.getElementById('themeBtn').textContent = 
                 document.body.classList.contains('dark-theme') ? '☀️' : '🌙';
         });
 
-        // Музыка
         document.getElementById('musicBtn').addEventListener('click', () => {
             if (isMusicPlaying) {
                 stopMusic();
@@ -531,7 +592,6 @@
             }
         });
 
-        // Определение пользователя
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
             myTelegramId = tg.initDataUnsafe.user.id;
             if (myTelegramId == boyId) {
@@ -543,7 +603,6 @@
             }
         }
 
-        // Счётчик дней
         function updateDaysCounter() {
             const now = new Date();
             const diff = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
@@ -557,7 +616,6 @@
         updateDaysCounter();
         setInterval(updateDaysCounter, 60000);
 
-        // Статистика
         function updateStats(counters) {
             const statsBar = document.getElementById('statsBar');
             statsBar.innerHTML = `
@@ -566,6 +624,9 @@
                 <div class="stat-item">💐 ${counters.flowers || 0}</div>
                 <div class="stat-item">🥺 ${counters.miss || 0}</div>
                 <div class="stat-item">🌙 ${counters.goodnight || 0}</div>
+                <div class="stat-item">🫱 ${counters.hands || 0}</div>
+                <div class="stat-item">🎵 ${counters.songs || 0}</div>
+                <div class="stat-item">💌 ${counters.compliments || 0}</div>
             `;
         }
 
@@ -573,19 +634,22 @@
             socket.emit('register', myTelegramId);
         }
 
-        // Отправка действий
         function sendAction(type) {
             if (!myTelegramId || !receiverTelegramId) {
                 showAppNotification('Не удалось определить пользователей', '⚠️');
                 return;
             }
             
-            if (type === 'capsule') {
-                openCapsuleModal();
-                return;
-            }
             if (type === 'game') {
                 startGame();
+                return;
+            }
+            if (type === 'draw') {
+                openDrawing();
+                return;
+            }
+            if (type === 'capsule') {
+                openCapsuleModal();
                 return;
             }
             if (type === 'photo') {
@@ -614,6 +678,61 @@
             showAppNotification('Отправлено!', '💞');
         }
 
+        // Игра
+        function startGame() {
+            if (gameActive) return;
+            gameActive = true;
+            gameScore = 0;
+            document.getElementById('gameArea').classList.add('active');
+            document.getElementById('gameScore').textContent = 'Очки: 0';
+            
+            gameInterval = setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'game-heart';
+                heart.textContent = ['❤️','💖','💕','💗'][Math.floor(Math.random() * 4)];
+                heart.style.left = Math.random() * 85 + '%';
+                heart.style.top = '-50px';
+                
+                heart.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    gameScore++;
+                    document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
+                    heart.remove();
+                    playPrettySound(659.25, 0.2);
+                });
+                
+                heart.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    gameScore++;
+                    document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
+                    heart.remove();
+                    playPrettySound(659.25, 0.2);
+                });
+                
+                document.getElementById('gameArea').appendChild(heart);
+                setTimeout(() => heart.remove(), 2000);
+            }, 800);
+            
+            // Таймер окончания игры
+            setTimeout(() => {
+                stopGame();
+                showAppNotification(`Игра окончена! Очки: ${gameScore}`, '🎮');
+            }, 30000);
+        }
+
+        function stopGame() {
+            clearInterval(gameInterval);
+            gameActive = false;
+            document.getElementById('gameArea').classList.remove('active');
+        }
+
+        // Кнопка "Домой" в игре
+        document.getElementById('gameHomeBtn').addEventListener('click', () => {
+            stopGame();
+            showAppNotification('Игра завершена', '🏠');
+        });
+
         // Капсула времени
         function openCapsuleModal() {
             document.getElementById('capsuleModal').classList.add('show');
@@ -640,39 +759,138 @@
             showAppNotification('Капсула отправлена!', '⏳');
         }
 
-        // Мини-игра
-        function startGame() {
-            if (gameActive) return;
-            gameActive = true;
-            gameScore = 0;
-            document.getElementById('gameArea').classList.add('active');
-            document.getElementById('gameScore').textContent = 'Очки: 0';
-            
-            gameInterval = setInterval(() => {
-                const heart = document.createElement('div');
-                heart.className = 'game-heart';
-                heart.textContent = ['❤️','💖','💕','💗'][Math.floor(Math.random() * 4)];
-                heart.style.left = Math.random() * 90 + '%';
-                heart.style.top = '-50px';
-                heart.onclick = () => {
-                    gameScore++;
-                    document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
-                    heart.remove();
-                    playPrettySound(659.25, 0.2);
-                };
-                document.getElementById('gameArea').appendChild(heart);
-                setTimeout(() => heart.remove(), 2000);
-            }, 800);
-            
-            setTimeout(() => {
-                clearInterval(gameInterval);
-                gameActive = false;
-                document.getElementById('gameArea').classList.remove('active');
-                showAppNotification(`Игра окончена! Очки: ${gameScore}`, '🎮');
-            }, 30000);
+        // Рисование
+        function openDrawing() {
+            document.getElementById('drawingModal').classList.add('active');
+            resizeCanvas();
+        }
+        function closeDrawing() {
+            document.getElementById('drawingModal').classList.remove('active');
+        }
+        function setColor(color) {
+            currentColor = color;
+        }
+        function clearDrawing() {
+            socket.emit('clear_drawing');
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        function resizeCanvas() {
+            const canvas = document.getElementById('drawingCanvas');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
         }
 
-        // Обработка событий
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', stopDraw);
+
+        function startDraw(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            if (e.type === 'touchstart') {
+                isDrawing = true;
+                lastX = x;
+                lastY = y;
+            } else if (e.type === 'touchmove' && isDrawing) {
+                drawLine(lastX, lastY, x, y, currentColor);
+                socket.emit('draw', {
+                    x1: lastX / canvas.width,
+                    y1: lastY / canvas.height,
+                    x2: x / canvas.width,
+                    y2: y / canvas.height,
+                    color: currentColor
+                });
+                lastX = x;
+                lastY = y;
+            }
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            drawLine(lastX, lastY, x, y, currentColor);
+            socket.emit('draw', {
+                x1: lastX / canvas.width,
+                y1: lastY / canvas.height,
+                x2: x / canvas.width,
+                y2: y / canvas.height,
+                color: currentColor
+            });
+            lastX = x;
+            lastY = y;
+        }
+
+        function stopDraw() {
+            isDrawing = false;
+        }
+
+        function drawLine(x1, y1, x2, y2, color) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        socket.on('draw', (data) => {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            drawLine(
+                data.x1 * canvas.width,
+                data.y1 * canvas.height,
+                data.x2 * canvas.width,
+                data.y2 * canvas.height,
+                data.color
+            );
+        });
+
+        socket.on('drawing_cleared', () => {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        socket.on('drawing_init', (drawingData) => {
+            if (drawingData && drawingData.length > 0) {
+                drawingData.forEach(data => {
+                    const canvas = document.getElementById('drawingCanvas');
+                    const ctx = canvas.getContext('2d');
+                    drawLine(
+                        data.x1 * canvas.width,
+                        data.y1 * canvas.height,
+                        data.x2 * canvas.width,
+                        data.y2 * canvas.height,
+                        data.color
+                    );
+                });
+            }
+        });
+
+        // Обработчики кнопок
         document.getElementById('bigHugBtn').addEventListener('click', () => sendAction('hug'));
         document.querySelectorAll('.love-btn, .tenderness-btn').forEach(btn => {
             btn.addEventListener('click', () => sendAction(btn.dataset.type));
