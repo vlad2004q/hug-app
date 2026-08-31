@@ -2,17 +2,17 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const { Telegraf } = require('telegraf');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+// Определяем, где запущено
+const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
 
-// Храним активные сокеты по Telegram ID
-const activeUsers = new Map(); // telegramId -> socket
+// Активные пользователи
+const activeUsers = new Map();
 
 // Раздаём статику
 app.use(express.static(path.join(__dirname, 'public')));
@@ -31,13 +31,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_hug', (data) => {
-        const senderId = data.senderId;
-        const receiverId = data.receiverId;
-        const hugType = data.hugType;
-
+        const { senderId, receiverId, hugType } = data;
         console.log(`Hug ${hugType} from ${senderId} to ${receiverId}`);
 
-        // Если получатель онлайн
+        // Отправляем через WebSocket, если получатель онлайн
         const receiverSocket = activeUsers.get(receiverId);
         if (receiverSocket) {
             receiverSocket.emit('receive_hug', {
@@ -47,17 +44,8 @@ io.on('connection', (socket) => {
             });
         }
 
-        // Отправляем уведомление через бота
-        const messageText = getHugMessage(hugType, senderId);
-        bot.telegram.sendMessage(receiverId, messageText, {
-            reply_markup: {
-                inline_keyboard: [[
-                    { text: '💞 Обнять в ответ', web_app: { url: 'https://hug-app.onrender.com/' } }
-                ]]
-            }
-        }).catch(err => console.error('Bot send error:', err.message));
-
-        socket.emit('hug_sent', { success: true, to: receiverId });
+        // Подтверждение отправителю
+        socket.emit('hug_sent', { success: true });
     });
 
     socket.on('disconnect', () => {
@@ -71,30 +59,7 @@ io.on('connection', (socket) => {
     });
 });
 
-function getHugMessage(type, senderId) {
-    const senderName = senderId == process.env.BOYFRIEND_ID ? 'Твой парень' : 'Твоя девушка';
-    switch(type) {
-        case 'hug': return `🤗 ${senderName} крепко тебя обнимает!`;
-        case 'kiss': return `💋 ${senderName} шлёт тебе поцелуй!`;
-        case 'tickle': return `🪶 ${senderName} тебя щекочет!`;
-        case 'hand': return `🫳 ${senderName} тянет тебя за руку!`;
-        default: return `💖 ${senderName} отправил(а) тебе нежность!`;
-    }
-}
-
-// Команда /start
-bot.start((ctx) => ctx.reply(`Твой Telegram ID: ${ctx.from.id}`));
-
-// Запуск бота
-// Запускаем бота только если это не Render или если это первый инстанс
-if (process.env.RENDER && process.env.RENDER_INSTANCE_COUNT > 1) {
-    console.log('Render multi-instance mode: bot polling disabled');
-} else {
-    bot.launch();
-    console.log('Bot polling started');
-}
-
-// Запуск сервера
-server.listen(process.env.PORT, () => {
-    console.log(`Server running on port ${process.env.PORT}`);
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
