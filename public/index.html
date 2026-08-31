@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Наши объятия</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #ffe0e0 0%, #fff5f5 50%, #ffe8f0 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            overflow: hidden;
+            position: relative;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            z-index: 10;
+        }
+        .person-info {
+            font-size: 20px;
+            font-weight: 600;
+            color: #d44a6a;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 8px rgba(212, 74, 106, 0.2);
+        }
+        .days-counter {
+            font-size: 14px;
+            color: #c07080;
+            margin-bottom: 25px;
+        }
+        .hug-area {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        .big-btn {
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            border: 4px solid rgba(255,255,255,0.8);
+            background: radial-gradient(circle, #ff9a9e 0%, #fecfef 100%);
+            color: white;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255, 126, 126, 0.5);
+            transition: transform 0.15s, box-shadow 0.15s;
+            touch-action: manipulation;
+            position: relative;
+            overflow: hidden;
+        }
+        .big-btn:active {
+            transform: scale(0.88);
+            box-shadow: 0 5px 15px rgba(255, 126, 126, 0.4);
+        }
+        .big-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .big-btn:active::after {
+            opacity: 1;
+        }
+        .tenderness-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tenderness-btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 30px;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            color: #d44a6a;
+            font-weight: 500;
+        }
+        .tenderness-btn:active {
+            transform: scale(0.95);
+            background: #ffe0e8;
+        }
+        .music-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+        .reaction {
+            font-size: 50px;
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            pointer-events: none;
+            animation: pop 0.6s ease;
+        }
+        @keyframes pop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .hearts-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            overflow: hidden;
+        }
+        .heart-particle {
+            position: absolute;
+            animation: floatUp 2s ease-out forwards;
+            font-size: 24px;
+        }
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80vh) scale(1.2);
+            }
+        }
+        .hands-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 215, 220, 0.3);
+            z-index: 24;
+            pointer-events: none;
+            display: none;
+            backdrop-filter: blur(2px);
+        }
+        .hands-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60px;
+            z-index: 25;
+            pointer-events: none;
+            animation: handsHold 1.5s ease forwards;
+            display: none;
+        }
+        @keyframes handsHold {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3);
+            }
+            30% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            60% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
+        /* Внутренние уведомления */
+        .app-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            padding: 15px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            font-size: 16px;
+            color: #d44a6a;
+            font-weight: 500;
+            z-index: 30;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 85%;
+            text-align: center;
+            border: 1px solid rgba(255, 182, 193, 0.3);
+        }
+        .app-notification.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <button class="music-btn" id="musicBtn" title="Включить/выключить музыку">🎵</button>
+    <div class="hearts-container" id="heartsContainer"></div>
+    <div class="app-notification" id="appNotification"></div>
+    
+    <div class="container">
+        <div class="person-info" id="info">Загрузка...</div>
+        <div class="days-counter" id="daysCounter"></div>
+        
+        <div class="hug-area">
+            <button class="big-btn" id="bigHugBtn">🤗 Обнять</button>
+        </div>
+
+        <div class="tenderness-buttons">
+            <button class="tenderness-btn" data-type="hand">🫱 Держу за руку</button>
+            <button class="tenderness-btn" data-type="flower">🌸 Цветок</button>
+            <button class="tenderness-btn" data-type="compliment">💌 Комплимент</button>
+            <button class="tenderness-btn" data-type="song">🎵 Наша песня</button>
+        </div>
+
+        <div class="reaction" id="reaction"></div>
+        <div class="hands-overlay" id="handsOverlay"></div>
+        <div class="hands-animation" id="handsAnimation">🤝</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const socket = io();
+
+        let myTelegramId = null;
+        let receiverTelegramId = null;
+
+        const boyId = 1449436021;
+        const girlId = 5126602356;
+
+        // Дата начала отношений (измените на свою)
+        const startDate = new Date('2026-01-01');
+
+        // Список комплиментов
+        const compliments = [
+            'Ты — моё самое любимое чудо ✨',
+            'Твоя улыбка способна растопить любое сердце 💕',
+            'С тобой даже расстояние становится ближе 🌍',
+            'Ты самая красивая, и это не обсуждается 😘',
+            'Мне так повезло, что ты есть у меня 🍀',
+            'Твои глаза — мой самый любимый океан 🌊'
+        ];
+
+        // Audio Context
+        let audioCtx = null;
+        let isMusicPlaying = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playPrettySound(freq = 523.25, duration = 0.3, type = 'sine') {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playSendSound() {
+            playPrettySound(523.25, 0.2, 'sine');
+            setTimeout(() => playPrettySound(659.25, 0.2, 'sine'), 100);
+            setTimeout(() => playPrettySound(783.99, 0.3, 'sine'), 200);
+        }
+
+        function playReceiveSound() {
+            playPrettySound(392.00, 0.4, 'sine');
+            setTimeout(() => playPrettySound(493.88, 0.4, 'sine'), 150);
+            setTimeout(() => playPrettySound(587.33, 0.5, 'sine'), 300);
+        }
+
+        function playHandSound() {
+            const notes = [392.00, 440.00, 493.88, 587.33];
+            notes.forEach((note, i) => {
+                setTimeout(() => playPrettySound(note, 0.4, 'sine'), i * 120);
+            });
+            setTimeout(() => playPrettySound(196.00, 0.8, 'sine'), 500);
+        }
+
+        function startMusic() {
+            initAudio();
+            if (isMusicPlaying) return;
+            isMusicPlaying = true;
+
+            const notes = [261.63, 329.63, 392.00, 523.25];
+            let noteIndex = 0;
+
+            function playLoop() {
+                if (!isMusicPlaying) return;
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.value = notes[noteIndex % notes.length];
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 1.5);
+                
+                noteIndex++;
+                setTimeout(playLoop, 800);
+            }
+            playLoop();
+        }
+
+        function stopMusic() {
+            isMusicPlaying = false;
+        }
+
+        // Внутреннее уведомление
+        function showAppNotification(message, emoji = '💞') {
+            const notification = document.getElementById('appNotification');
+            notification.textContent = `${emoji} ${message}`;
+            notification.classList.add('show');
+            
+            clearTimeout(notification._timeout);
+            notification._timeout = setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        document.getElementById('musicBtn').addEventListener('click', () => {
+            if (isMusicPlaying) {
+                stopMusic();
+                document.getElementById('musicBtn').textContent = '🎵';
+            } else {
+                startMusic();
+                document.getElementById('musicBtn').textContent = '🎶';
+            }
+        });
+
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            myTelegramId = tg.initDataUnsafe.user.id;
+            
+            if (myTelegramId == boyId) {
+                receiverTelegramId = girlId;
+                document.getElementById('info').textContent = 'Ты парень 💪';
+            } else if (myTelegramId == girlId) {
+                receiverTelegramId = boyId;
+                document.getElementById('info').textContent = 'Ты девушка 🌸';
+            } else {
+                document.getElementById('info').textContent = 'Кто ты? 🤔';
+            }
+        } else {
+            document.getElementById('info').textContent = 'Не в Telegram';
+        }
+
+        function updateDaysCounter() {
+            const now = new Date();
+            const diff = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+            document.getElementById('daysCounter').textContent = `Вместе: ${diff} ${getDaysWord(diff)} 💕`;
+        }
+        function getDaysWord(days) {
+            if (days % 10 === 1 && days % 100 !== 11) return 'день';
+            if ([2,3,4].includes(days % 10) && ![12,13,14].includes(days % 100)) return 'дня';
+            return 'дней';
+        }
+        updateDaysCounter();
+        setInterval(updateDaysCounter, 60000);
+
+        if (myTelegramId) {
+            socket.emit('register', myTelegramId);
+        }
+
+        function createHearts() {
+            const container = document.getElementById('heartsContainer');
+            for (let i = 0; i < 10; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.textContent = ['💕','❤️','💖','💗','🌸'][Math.floor(Math.random() * 5)];
+                heart.style.left = Math.random() * 90 + '%';
+                heart.style.top = Math.random() * 50 + 50 + '%';
+                heart.style.animationDuration = (1.5 + Math.random() * 1) + 's';
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 2500);
+            }
+        }
+
+        function sendAction(type) {
+            if (!myTelegramId || !receiverTelegramId) {
+                showAppNotification('Не удалось определить пользователей', '⚠️');
+                return;
+            }
+            
+            let hugType = 'hug';
+            let sendMessage = 'Объятие отправлено';
+            
+            if (type === 'hand') {
+                hugType = 'hand';
+                sendMessage = 'Ты держишь меня за руку';
+            } else if (type === 'flower') {
+                hugType = 'flower';
+                sendMessage = 'Цветок отправлен';
+            } else if (type === 'compliment') {
+                hugType = 'compliment';
+                sendMessage = 'Комплимент отправлен';
+            } else if (type === 'song') {
+                hugType = 'song';
+                sendMessage = 'Мелодия отправлена';
+            }
+            
+            if (type === 'hand') {
+                playHandSound();
+            } else {
+                playSendSound();
+            }
+            
+            socket.emit('send_hug', {
+                senderId: myTelegramId,
+                receiverId: receiverTelegramId,
+                hugType: hugType
+            });
+            
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            showAppNotification(sendMessage, '💞');
+        }
+
+        document.getElementById('bigHugBtn').addEventListener('click', () => sendAction('hug'));
+        document.querySelectorAll('.tenderness-btn').forEach(btn => {
+            btn.addEventListener('click', () => sendAction(btn.dataset.type));
+        });
+
+        socket.on('receive_hug', (data) => {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+            
+            playReceiveSound();
+            createHearts();
+
+            const reactionDiv = document.getElementById('reaction');
+            reactionDiv.style.display = 'block';
+            
+            let reactionEmoji = '🤗';
+            let notificationMessage = 'Тебя крепко обняли!';
+            
+            if (data.type === 'hand') {
+                reactionEmoji = '🫱';
+                notificationMessage = 'Держит тебя за руку';
+                
+                const overlay = document.getElementById('handsOverlay');
+                const handsAnim = document.getElementById('handsAnimation');
+                overlay.style.display = 'block';
+                handsAnim.style.display = 'block';
+                handsAnim.style.animation = 'none';
+                handsAnim.offsetHeight;
+                handsAnim.style.animation = 'handsHold 1.5s ease forwards';
+                
+                setTimeout(() => playHandSound(), 200);
+                
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    handsAnim.style.display = 'none';
+                }, 1500);
+            } else if (data.type === 'flower') {
+                reactionEmoji = '🌸';
+                notificationMessage = 'Тебе подарили цветок!';
+            } else if (data.type === 'compliment') {
+                reactionEmoji = '💌';
+                notificationMessage = compliments[Math.floor(Math.random() * compliments.length)];
+            } else if (data.type === 'song') {
+                reactionEmoji = '🎵';
+                notificationMessage = 'Тебе отправили мелодию!';
+            }
+            
+            reactionDiv.textContent = reactionEmoji;
+            reactionDiv.style.animation = 'none';
+            reactionDiv.offsetHeight;
+            reactionDiv.style.animation = 'pop 0.6s ease';
+
+            setTimeout(() => {
+                reactionDiv.style.display = 'none';
+            }, 2000);
+
+            showAppNotification(notificationMessage, reactionEmoji);
+        });
+
+        socket.on('hug_sent', () => {});
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: hug-app
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: PORT
+        value: 10000
+      - key: BOYFRIEND_ID
+        sync: false
+      - key: GIRLFRIEND_ID
+        sync: false
