@@ -189,7 +189,7 @@
         }
         .app-notification {
             position: fixed;
-            top: 80px; /* изменено с 20px на 80px для iPhone с чёлкой */
+            top: 80px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: var(--card);
@@ -203,8 +203,12 @@
             transition: transform 0.5s;
             max-width: 85%;
             text-align: center;
+            display: none;  /* добавлено */
         }
-        .app-notification.show { transform: translateX(-50%) translateY(0); }
+        .app-notification.show {
+            display: block;  /* добавлено */
+            transform: translateX(-50%) translateY(0);
+        }
         .game-area {
             position: fixed;
             top: 0;
@@ -515,9 +519,15 @@
         function showAppNotification(message, emoji = '💞') {
             const notification = document.getElementById('appNotification');
             notification.textContent = `${emoji} ${message}`;
+            notification.style.display = 'block';
             notification.classList.add('show');
             clearTimeout(notification._timeout);
-            notification._timeout = setTimeout(() => notification.classList.remove('show'), 3000);
+            notification._timeout = setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 500);
+            }, 3000);
         }
 
         function createHearts() {
@@ -714,7 +724,6 @@
                 setTimeout(() => heart.remove(), 2000);
             }, 800);
             
-            // Таймер окончания игры
             setTimeout(() => {
                 stopGame();
                 showAppNotification(`Игра окончена! Очки: ${gameScore}`, '🎮');
@@ -727,7 +736,6 @@
             document.getElementById('gameArea').classList.remove('active');
         }
 
-        // Кнопка "Домой" в игре
         document.getElementById('gameHomeBtn').addEventListener('click', () => {
             stopGame();
             showAppNotification('Игра завершена', '🏠');
