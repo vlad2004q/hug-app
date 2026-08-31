@@ -18,13 +18,19 @@ const activeUsers = new Map();
 const messageQueue = { boy: [], girl: [] };
 const photos = { boy: [], girl: [] };
 
-// Счётчики
-let counters = { hugs: 0, love: 0, flowers: 0, hands: 0, songs: 0, compliments: 0, miss: 0, goodnight: 0 };
+// Счётчики (ключи должны совпадать с типами событий или быть сопоставлены)
+let counters = {
+    hugs: 0,
+    love: 0,
+    flowers: 0,
+    hands: 0,
+    songs: 0,
+    compliments: 0,
+    miss: 0,
+    goodnight: 0
+};
 
-// Капсулы времени
 const timeCapsules = { boy: [], girl: [] };
-
-// Рисование
 let drawingData = [];
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -103,8 +109,25 @@ io.on('connection', (socket) => {
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
-        if (counters[hugType] !== undefined) counters[hugType]++;
-        console.log('Counters:', counters);
+        // Маппинг типов событий на ключи счётчиков
+        const counterMap = {
+            'hug': 'hugs',
+            'love': 'love',
+            'flower': 'flowers',
+            'hand': 'hands',
+            'song': 'songs',
+            'compliment': 'compliments',
+            'miss': 'miss',
+            'goodnight': 'goodnight'
+        };
+        
+        const counterKey = counterMap[hugType] || hugType;
+        if (counters[counterKey] !== undefined) {
+            counters[counterKey]++;
+            console.log('Counter incremented:', counterKey, '=>', counters[counterKey]);
+        } else {
+            console.log('Unknown hugType:', hugType);
+        }
         
         const receiverSocket = activeUsers.get(receiverId);
         if (receiverSocket) {
