@@ -85,6 +85,7 @@
         }
         .hearts-container, .love-animation, .sad-animation {
             position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;
+            overflow:hidden; /* добавлено: обрезаем частицы за пределами */
         }
         .heart-particle { position:absolute; animation:floatUp 2s ease-out forwards; font-size:24px; }
         @keyframes floatUp {
@@ -231,9 +232,9 @@
         let lastX = 0, lastY = 0;
 
         const boyId = 1449436021;
-        const girlIdReal = 1042602302;   // ID настоящей девушки
-        const girlIdTest = 5126602356;   // ID тестового аккаунта
-        let girlId = girlIdReal;         // по умолчанию настоящая
+        const girlIdReal = 1042602302;
+        const girlIdTest = 5126602356;
+        let girlId = girlIdReal;
 
         const startDate = new Date('2026-08-01');
 
@@ -341,12 +342,12 @@
 
         function createHearts() {
             const container = document.getElementById('heartsContainer');
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 6; i++) {
                 const heart = document.createElement('div');
                 heart.className = 'heart-particle';
                 heart.textContent = ['💕','❤️','💖','💗','🌸'][Math.floor(Math.random() * 5)];
-                heart.style.left = Math.random() * 90 + '%';
-                heart.style.top = Math.random() * 50 + 50 + '%';
+                heart.style.left = (10 + Math.random() * 80) + '%';
+                heart.style.top = (50 + Math.random() * 40) + '%';
                 heart.style.animationDuration = (1.5 + Math.random()) + 's';
                 container.appendChild(heart);
                 setTimeout(() => heart.remove(), 2500);
@@ -355,12 +356,12 @@
 
         function createLoveHearts() {
             const container = document.getElementById('loveAnimation');
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 12; i++) {
                 const heart = document.createElement('div');
                 heart.className = 'heart-particle';
                 heart.textContent = ['❤️','💖','💕','💗','💘'][Math.floor(Math.random() * 5)];
-                heart.style.left = Math.random() * 90 + '%';
-                heart.style.top = Math.random() * 50 + 50 + '%';
+                heart.style.left = (10 + Math.random() * 80) + '%';
+                heart.style.top = (50 + Math.random() * 40) + '%';
                 heart.style.animationDuration = (2 + Math.random()) + 's';
                 container.appendChild(heart);
                 setTimeout(() => heart.remove(), 3000);
@@ -369,12 +370,12 @@
 
         function createSadAnimation() {
             const container = document.getElementById('sadAnimation');
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 6; i++) {
                 const sad = document.createElement('div');
                 sad.className = 'sad-particle';
                 sad.textContent = ['🥺','💔','😢','🌧️','💭'][Math.floor(Math.random() * 5)];
-                sad.style.left = Math.random() * 90 + '%';
-                sad.style.top = Math.random() * 50 + 50 + '%';
+                sad.style.left = (10 + Math.random() * 80) + '%';
+                sad.style.top = (50 + Math.random() * 40) + '%';
                 sad.style.animationDuration = (2.5 + Math.random()) + 's';
                 container.appendChild(sad);
                 setTimeout(() => sad.remove(), 3000);
@@ -422,7 +423,6 @@
             }
         }
 
-        // Переключатель получателя (только для парня)
         if (myTelegramId == boyId) {
             const switchBtn = document.getElementById('switchGirlBtn');
             switchBtn.style.display = 'inline-block';
@@ -529,7 +529,6 @@
             showAppNotification('Отправлено!', '💞');
         }
 
-        // Игра
         function startGame() {
             if (gameActive) return;
             gameActive = true;
@@ -579,7 +578,6 @@
             showAppNotification('Игра завершена', '🏠');
         });
 
-        // Капсула времени
         function openCapsuleModal() {
             document.getElementById('capsuleModal').classList.add('show');
         }
@@ -605,7 +603,6 @@
             showAppNotification('Капсула отправлена!', '⏳');
         }
 
-        // Рисование
         function openDrawing() {
             document.getElementById('drawingModal').classList.add('active');
             resizeCanvas();
@@ -736,7 +733,6 @@
             }
         });
 
-        // Обработчики кнопок
         document.getElementById('bigHugBtn').addEventListener('click', () => sendAction('hug'));
         document.querySelectorAll('.love-btn, .tenderness-btn').forEach(btn => {
             btn.addEventListener('click', () => sendAction(btn.dataset.type));
