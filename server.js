@@ -9,47 +9,39 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Создаём бота только если есть токен
 let bot = null;
 if (process.env.BOT_TOKEN) {
     bot = new Telegraf(process.env.BOT_TOKEN);
 }
 
-// Активные пользователи
 const activeUsers = new Map();
+const messageQueue = { boy: [], girl: [] };
+const photos = { boy: [], girl: [] };
 
-// Очередь сообщений для офлайн-пользователей
-const messageQueue = {
-    boy: [],
-    girl: []
-};
+// Счётчики
+const counters = { hugs: 0, love: 0, flowers: 0, hands: 0, songs: 0, compliments: 0, miss: 0, goodnight: 0 };
 
-// Хранилище фотографий (в памяти)
-const photos = {
-    boy: [],
-    girl: []
-};
+// Капсулы времени
+const timeCapsules = { boy: [], girl: [] };
 
-// Раздаём статику
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Функция для отправки уведомлений через бота
 async function sendTelegramNotification(receiverId, hugType) {
     if (!bot) return;
-    
     const messages = {
         'hug': '🤗 Тебя крепко обняли!',
         'hand': '🫱 Тебя держат за руку!',
         'flower': '💐 Тебе подарили красивый букет!',
         'compliment': '💌 Тебе отправили комплимент!',
         'song': '🎵 Тебе отправили мелодию!',
-        'love': '❤️ Тебе отправили признание в любви!'
+        'love': '❤️ Тебе отправили признание в любви!',
+        'miss': '🥺 По тебе скучают!',
+        'goodnight': '🌙 Тебе желают спокойной ночи!',
+        'kiss': '💋 Тебе отправили поцелуй!'
     };
-    
     try {
         await bot.telegram.sendMessage(receiverId, messages[hugType] || messages['hug'], {
             reply_markup: {
@@ -58,48 +50,35 @@ async function sendTelegramNotification(receiverId, hugType) {
                 ]]
             }
         });
-        console.log(`Notification sent to ${receiverId}`);
     } catch (err) {
         console.error('Send error:', err.message);
     }
 }
 
-// Обработка получения фото от пользователя
 if (bot) {
     bot.on('photo', async (ctx) => {
         const userId = ctx.from.id;
         const photo = ctx.message.photo;
-        
         const largestPhoto = photo[photo.length - 1];
         const fileId = largestPhoto.file_id;
-        
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
-        console.log(`Photo received from ${userId}, fileId: ${fileId}`);
-        
         if (userId === boyId) {
             photos.boy.push(fileId);
-            console.log(`Boy photos count: ${photos.boy.length}`);
-            await ctx.reply('📸 Фото сохранено! Теперь твоя девушка может увидеть его, нажав на кнопку «Фото» в приложении.');
+            await ctx.reply('📸 Фото сохранено!');
         } else if (userId === girlId) {
             photos.girl.push(fileId);
-            console.log(`Girl photos count: ${photos.girl.length}`);
-            await ctx.reply('📸 Фото сохранено! Теперь твой парень может увидеть его, нажав на кнопку «Фото» в приложении.');
-        } else {
-            await ctx.reply('Я тебя не знаю. Ты не парень и не девушка из этого приложения.');
+            await ctx.reply('📸 Фото сохранено!');
         }
     });
 }
 
-// Обработка WebSocket
 io.on('connection', (socket) => {
     console.log('New client connected');
 
     socket.on('register', (telegramId) => {
         activeUsers.set(telegramId, socket);
-        console.log(`User ${telegramId} registered`);
-        
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
@@ -107,60 +86,45 @@ io.on('connection', (socket) => {
             const queue = [...messageQueue.boy];
             messageQueue.boy = [];
             socket.emit('queued_messages', queue);
-            console.log(`Sent ${queue.length} queued messages to boy`);
         } else if (telegramId === girlId && messageQueue.girl.length > 0) {
             const queue = [...messageQueue.girl];
             messageQueue.girl = [];
             socket.emit('queued_messages', queue);
-            console.log(`Sent ${queue.length} queued messages to girl`);
         }
+        
+        socket.emit('stats_update', counters);
+        socket.emit('capsules_update', { boy: timeCapsules.boy, girl: timeCapsules.girl });
     });
 
     socket.on('send_hug', (data) => {
         const { senderId, receiverId, hugType } = data;
-        console.log(`Hug ${hugType} from ${senderId} to ${receiverId}`);
-
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
+        // Обновляем счётчики
+        if (counters[hugType] !== undefined) counters[hugType]++;
+        
         const receiverSocket = activeUsers.get(receiverId);
         if (receiverSocket) {
-            receiverSocket.emit('receive_hug', {
-                type: hugType,
-                from: senderId,
-                timestamp: Date.now()
-            });
+            receiverSocket.emit('receive_hug', { type: hugType, from: senderId, timestamp: Date.now() });
         } else {
-            if (receiverId === boyId) {
-                messageQueue.boy.push({
-                    type: hugType,
-                    from: senderId,
-                    timestamp: Date.now()
-                });
-            } else if (receiverId === girlId) {
-                messageQueue.girl.push({
-                    type: hugType,
-                    from: senderId,
-                    timestamp: Date.now()
-                });
-            }
+            const queue = receiverId === boyId ? messageQueue.boy : messageQueue.girl;
+            queue.push({ type: hugType, from: senderId, timestamp: Date.now() });
         }
-
+        
         sendTelegramNotification(receiverId, hugType);
         socket.emit('hug_sent', { success: true });
+        
+        // Отправляем обновлённые счётчики всем
+        io.emit('stats_update', counters);
     });
 
-    // Получение случайного фото
     socket.on('get_photo', async (data) => {
         const { requesterId } = data;
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
-        
         let photoList = [];
         let receiverId = null;
-        
-        console.log(`Photo request from ${requesterId}`);
-        console.log(`Boy photos: ${photos.boy.length}, Girl photos: ${photos.girl.length}`);
         
         if (requesterId === boyId) {
             photoList = photos.girl;
@@ -171,30 +135,83 @@ io.on('connection', (socket) => {
         }
         
         if (photoList.length === 0) {
-            socket.emit('photo_result', { 
-                success: false, 
-                message: 'Пока нет фотографий. Отправь фото боту, чтобы оно появилось здесь!' 
-            });
+            socket.emit('photo_result', { success: false, message: 'Пока нет фотографий.' });
             return;
         }
         
         const randomPhoto = photoList[Math.floor(Math.random() * photoList.length)];
-        console.log(`Sending photo ${randomPhoto} to ${receiverId}`);
-        
         if (bot) {
             try {
                 await bot.telegram.sendPhoto(receiverId, randomPhoto);
-                socket.emit('photo_result', { 
-                    success: true, 
-                    message: 'Фото отправлено в чат!' 
-                });
+                socket.emit('photo_result', { success: true, message: 'Фото отправлено в чат!' });
             } catch (err) {
-                console.error('Photo send error:', err.message);
-                socket.emit('photo_result', { 
-                    success: false, 
-                    message: 'Не удалось отправить фото. Попробуй ещё раз.' 
-                });
+                socket.emit('photo_result', { success: false, message: 'Не удалось отправить фото.' });
             }
+        }
+    });
+
+    // Капсула времени
+    socket.on('create_capsule', (data) => {
+        const { senderId, receiverId, message, openDate } = data;
+        const boyId = Number(process.env.BOYFRIEND_ID);
+        const girlId = Number(process.env.GIRLFRIEND_ID);
+        
+        const capsule = {
+            id: Date.now(),
+            from: senderId,
+            to: receiverId,
+            message: message,
+            openDate: openDate,
+            createdAt: Date.now(),
+            opened: false
+        };
+        
+        if (receiverId === boyId) {
+            timeCapsules.boy.push(capsule);
+        } else if (receiverId === girlId) {
+            timeCapsules.girl.push(capsule);
+        }
+        
+        socket.emit('capsule_created', { success: true });
+        io.emit('capsules_update', { boy: timeCapsules.boy, girl: timeCapsules.girl });
+    });
+
+    socket.on('check_capsules', (data) => {
+        const { userId } = data;
+        const boyId = Number(process.env.BOYFRIEND_ID);
+        const girlId = Number(process.env.GIRLFRIEND_ID);
+        
+        let userCapsules = [];
+        if (userId === boyId) {
+            userCapsules = timeCapsules.boy;
+        } else if (userId === girlId) {
+            userCapsules = timeCapsules.girl;
+        }
+        
+        const now = Date.now();
+        const openable = userCapsules.filter(c => !c.opened && c.openDate <= now);
+        const locked = userCapsules.filter(c => !c.opened && c.openDate > now);
+        
+        socket.emit('capsules_status', { openable, locked });
+    });
+
+    socket.on('open_capsule', (data) => {
+        const { userId, capsuleId } = data;
+        const boyId = Number(process.env.BOYFRIEND_ID);
+        const girlId = Number(process.env.GIRLFRIEND_ID);
+        
+        let userCapsules = [];
+        if (userId === boyId) {
+            userCapsules = timeCapsules.boy;
+        } else if (userId === girlId) {
+            userCapsules = timeCapsules.girl;
+        }
+        
+        const capsule = userCapsules.find(c => c.id === capsuleId);
+        if (capsule && !capsule.opened && capsule.openDate <= Date.now()) {
+            capsule.opened = true;
+            socket.emit('capsule_opened', { message: capsule.message, from: capsule.from });
+            io.emit('capsules_update', { boy: timeCapsules.boy, girl: timeCapsules.girl });
         }
     });
 
@@ -202,39 +219,28 @@ io.on('connection', (socket) => {
         for (const [id, s] of activeUsers.entries()) {
             if (s === socket) {
                 activeUsers.delete(id);
-                console.log(`User ${id} disconnected`);
                 break;
             }
         }
     });
 });
 
-// Запуск бота
 if (bot) {
     bot.start((ctx) => {
         ctx.reply(
             'Привет! Я бот для вашего приложения «Наши объятия».\n\n' +
-            '📸 Отправь мне фото, и оно сохранится. Когда захочешь увидеть фото любимого человека, нажми кнопку «Фото» в приложении.\n\n' +
+            '📸 Отправь мне фото, и оно сохранится.\n' +
             `Твой Telegram ID: ${ctx.from.id}`
         );
     });
-    
     bot.launch();
     console.log('Bot started');
 }
 
-// Запуск сервера
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Graceful shutdown
-process.once('SIGINT', () => {
-    if (bot) bot.stop('SIGINT');
-    server.close();
-});
-process.once('SIGTERM', () => {
-    if (bot) bot.stop('SIGTERM');
-    server.close();
-});
+process.once('SIGINT', () => { if (bot) bot.stop('SIGINT'); server.close(); });
+process.once('SIGTERM', () => { if (bot) bot.stop('SIGTERM'); server.close(); });

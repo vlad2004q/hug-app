@@ -7,6 +7,16 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        :root {
+            --bg: #fdf0f0;
+            --text: #d44a6a;
+            --card: rgba(255,255,255,0.9);
+        }
+        .dark-theme {
+            --bg: #1a1a2e;
+            --text: #ff8fa3;
+            --card: rgba(30,30,50,0.9);
+        }
         * {
             margin: 0;
             padding: 0;
@@ -14,7 +24,7 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, sans-serif;
-            background: linear-gradient(135deg, #ffe0e0 0%, #fff5f5 50%, #ffe8f0 100%);
+            background: var(--bg);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -22,6 +32,36 @@
             user-select: none;
             overflow: hidden;
             position: relative;
+            transition: background 0.5s;
+        }
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .cloud {
+            position: absolute;
+            font-size: 40px;
+            opacity: 0.3;
+            animation: cloudMove 30s linear infinite;
+        }
+        @keyframes cloudMove {
+            0% { transform: translateX(-100px); }
+            100% { transform: translateX(calc(100vw + 100px)); }
         }
         .container {
             text-align: center;
@@ -33,18 +73,32 @@
         .person-info {
             font-size: 20px;
             font-weight: 600;
-            color: #d44a6a;
+            color: var(--text);
             margin-bottom: 10px;
-            text-shadow: 0 2px 8px rgba(212, 74, 106, 0.2);
         }
         .days-counter {
             font-size: 14px;
-            color: #c07080;
+            color: var(--text);
             margin-bottom: 25px;
+            opacity: 0.8;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            background: var(--card);
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .hug-area {
             margin-bottom: 25px;
-            position: relative;
         }
         .big-btn {
             width: 170px;
@@ -57,70 +111,57 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(255, 126, 126, 0.5);
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: transform 0.15s;
             touch-action: manipulation;
-            position: relative;
-            overflow: hidden;
         }
-        .big-btn:active {
-            transform: scale(0.88);
-            box-shadow: 0 5px 15px rgba(255, 126, 126, 0.4);
-        }
+        .big-btn:active { transform: scale(0.88); }
         .tenderness-buttons {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
             margin-bottom: 20px;
         }
         .tenderness-btn {
-            padding: 12px 16px;
+            padding: 10px 14px;
             border: none;
-            border-radius: 30px;
-            background: rgba(255,255,255,0.9);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            font-size: 15px;
+            border-radius: 25px;
+            background: var(--card);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s;
-            backdrop-filter: blur(10px);
-            color: #d44a6a;
+            color: var(--text);
             font-weight: 500;
+            transition: all 0.2s;
         }
-        .tenderness-btn:active {
-            transform: scale(0.95);
-            background: #ffe0e8;
-        }
+        .tenderness-btn:active { transform: scale(0.95); }
         .love-btn {
-            width: 60px;
-            height: 60px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             border: 3px solid #ff6b8a;
             background: linear-gradient(135deg, #ff6b8a, #ff8fa3);
             color: white;
-            font-size: 28px;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(255, 107, 138, 0.5);
-            transition: all 0.3s;
-            touch-action: manipulation;
-        }
-        .love-btn:active {
-            transform: scale(0.8);
-            box-shadow: 0 0 40px rgba(255, 107, 138, 0.8);
-        }
-        .music-btn {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 25px;
-            background: rgba(255,255,255,0.8);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             font-size: 20px;
             cursor: pointer;
-            z-index: 20;
-            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(255, 107, 138, 0.5);
+            transition: all 0.3s;
         }
+        .love-btn:active { transform: scale(0.8); }
+        .music-btn, .theme-btn {
+            position: fixed;
+            top: 15px;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 20px;
+            background: var(--card);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        .music-btn { right: 15px; }
+        .theme-btn { right: 60px; }
         .reaction {
             font-size: 50px;
             display: none;
@@ -137,36 +178,7 @@
             50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
-        .love-animation {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 25;
-            display: none;
-        }
-        .love-heart {
-            position: absolute;
-            animation: loveFloat 2s ease-out forwards;
-            font-size: 30px;
-        }
-        @keyframes loveFloat {
-            0% {
-                opacity: 1;
-                transform: translateY(0) scale(0.5) rotate(0deg);
-            }
-            50% {
-                opacity: 1;
-                transform: translateY(-50vh) scale(1.2) rotate(180deg);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-100vh) scale(1.5) rotate(360deg);
-            }
-        }
-        .hearts-container {
+        .hearts-container, .love-animation, .sad-animation {
             position: fixed;
             top: 0;
             left: 0;
@@ -174,7 +186,6 @@
             height: 100%;
             pointer-events: none;
             z-index: 5;
-            overflow: hidden;
         }
         .heart-particle {
             position: absolute;
@@ -182,105 +193,145 @@
             font-size: 24px;
         }
         @keyframes floatUp {
-            0% {
-                opacity: 1;
-                transform: translateY(0) scale(0.5);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-80vh) scale(1.2);
-            }
+            0% { opacity: 1; transform: translateY(0) scale(0.5); }
+            100% { opacity: 0; transform: translateY(-80vh) scale(1.2); }
         }
-        .hands-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 215, 220, 0.3);
-            z-index: 24;
-            pointer-events: none;
-            display: none;
-            backdrop-filter: blur(2px);
+        .sad-particle {
+            position: absolute;
+            animation: sadFloat 3s ease-out forwards;
+            font-size: 30px;
         }
-        .hands-animation {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 60px;
-            z-index: 25;
-            pointer-events: none;
-            animation: handsHold 1.5s ease forwards;
-            display: none;
-        }
-        @keyframes handsHold {
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.3);
-            }
-            30% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1.2);
-            }
-            60% {
-                transform: translate(-50%, -50%) scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(1.5);
-            }
+        @keyframes sadFloat {
+            0% { opacity: 0; transform: translateY(0) scale(0.5); }
+            30% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-60vh) scale(1); }
         }
         .app-notification {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(20px);
+            background: var(--card);
             padding: 15px 25px;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.15);
             font-size: 16px;
-            color: #d44a6a;
+            color: var(--text);
             font-weight: 500;
             z-index: 30;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.5s;
             max-width: 85%;
             text-align: center;
-            border: 1px solid rgba(255, 182, 193, 0.3);
         }
-        .app-notification.show {
-            transform: translateX(-50%) translateY(0);
+        .app-notification.show { transform: translateX(-50%) translateY(0); }
+        .capsule-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card);
+            padding: 20px;
+            border-radius: 20px;
+            z-index: 40;
+            display: none;
+            max-width: 90%;
+            width: 350px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .capsule-modal.show { display: block; }
+        .capsule-modal input, .capsule-modal textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .capsule-modal button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            background: #ff6b8a;
+            color: white;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .game-area {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 35;
+            display: none;
+            background: rgba(0,0,0,0.5);
+        }
+        .game-area.active { display: block; }
+        .game-heart {
+            position: absolute;
+            font-size: 30px;
+            cursor: pointer;
+            animation: gameHeart 2s linear forwards;
+        }
+        @keyframes gameHeart {
+            0% { transform: translateY(-50px); opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 1; }
+        }
+        .game-score {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: white;
+            z-index: 36;
         }
     </style>
 </head>
 <body>
-    <button class="music-btn" id="musicBtn" title="Включить/выключить музыку">🎵</button>
+    <div class="stars" id="stars"></div>
+    <button class="music-btn" id="musicBtn">🎵</button>
+    <button class="theme-btn" id="themeBtn">🌙</button>
     <div class="hearts-container" id="heartsContainer"></div>
     <div class="love-animation" id="loveAnimation"></div>
+    <div class="sad-animation" id="sadAnimation"></div>
     <div class="app-notification" id="appNotification"></div>
+    <div class="game-area" id="gameArea">
+        <div class="game-score" id="gameScore">Очки: 0</div>
+    </div>
+    <div class="capsule-modal" id="capsuleModal">
+        <h3>💌 Капсула времени</h3>
+        <textarea id="capsuleMessage" placeholder="Напиши сообщение..."></textarea>
+        <input type="date" id="capsuleDate">
+        <div>
+            <button onclick="sendCapsule()">Отправить</button>
+            <button onclick="closeCapsuleModal()">Закрыть</button>
+        </div>
+    </div>
     
     <div class="container">
         <div class="person-info" id="info">Загрузка...</div>
         <div class="days-counter" id="daysCounter"></div>
+        <div class="stats-bar" id="statsBar"></div>
         
         <div class="hug-area">
             <button class="big-btn" id="bigHugBtn">🤗 Обнять</button>
         </div>
 
         <div class="tenderness-buttons">
-            <button class="love-btn" data-type="love" title="Я тебя люблю!">❤️</button>
-            <button class="tenderness-btn" data-type="hand">🫱 Держу за руку</button>
+            <button class="love-btn" data-type="love">❤️</button>
+            <button class="tenderness-btn" data-type="miss">🥺 Скучаю</button>
+            <button class="tenderness-btn" data-type="goodnight">🌙 Спокойной ночи</button>
+            <button class="tenderness-btn" data-type="hand">🫱 За руку</button>
             <button class="tenderness-btn" data-type="flower">💐 Букет</button>
             <button class="tenderness-btn" data-type="compliment">💌 Комплимент</button>
-            <button class="tenderness-btn" data-type="song">🎵 Наша песня</button>
+            <button class="tenderness-btn" data-type="song">🎵 Песня</button>
             <button class="tenderness-btn" data-type="photo">📸 Фото</button>
+            <button class="tenderness-btn" data-type="capsule">⏳ Капсула</button>
+            <button class="tenderness-btn" data-type="game">🎮 Игра</button>
         </div>
 
         <div class="reaction" id="reaction"></div>
-        <div class="hands-overlay" id="handsOverlay"></div>
-        <div class="hands-animation" id="handsAnimation">🤝</div>
     </div>
 
     <script>
@@ -292,11 +343,12 @@
 
         let myTelegramId = null;
         let receiverTelegramId = null;
+        let gameActive = false;
+        let gameScore = 0;
+        let gameInterval = null;
 
         const boyId = 1449436021;
         const girlId = 5126602356;
-
-        // Дата начала отношений - 1 августа 2026
         const startDate = new Date('2026-08-01');
 
         const compliments = [
@@ -312,132 +364,163 @@
         let isMusicPlaying = false;
 
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
         function playPrettySound(freq = 523.25, duration = 0.3, type = 'sine') {
             initAudio();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
         }
 
         function playSendSound() {
-            playPrettySound(523.25, 0.2, 'sine');
-            setTimeout(() => playPrettySound(659.25, 0.2, 'sine'), 100);
-            setTimeout(() => playPrettySound(783.99, 0.3, 'sine'), 200);
-        }
-
-        function playReceiveSound() {
-            playPrettySound(392.00, 0.4, 'sine');
-            setTimeout(() => playPrettySound(493.88, 0.4, 'sine'), 150);
-            setTimeout(() => playPrettySound(587.33, 0.5, 'sine'), 300);
-        }
-
-        function playHandSound() {
-            const notes = [392.00, 440.00, 493.88, 587.33];
-            notes.forEach((note, i) => {
-                setTimeout(() => playPrettySound(note, 0.4, 'sine'), i * 120);
-            });
-            setTimeout(() => playPrettySound(196.00, 0.8, 'sine'), 500);
-        }
-
-        function playSongSound() {
-            const melody = [
-                523.25, 659.25, 783.99, 1046.50,
-                783.99, 659.25, 523.25, 659.25
-            ];
-            melody.forEach((note, i) => {
-                setTimeout(() => playPrettySound(note, 0.5, 'sine'), i * 200);
-            });
-            setTimeout(() => playPrettySound(392.00, 1.0, 'sine'), 1600);
+            playPrettySound(523.25, 0.2);
+            setTimeout(() => playPrettySound(659.25, 0.2), 100);
+            setTimeout(() => playPrettySound(783.99, 0.3), 200);
         }
 
         function playLoveSound() {
-            const notes = [523.25, 659.25, 783.99, 1046.50];
-            notes.forEach((note, i) => {
-                setTimeout(() => playPrettySound(note, 0.6, 'sine'), i * 150);
+            [523.25, 659.25, 783.99, 1046.50].forEach((note, i) => {
+                setTimeout(() => playPrettySound(note, 0.6), i * 150);
             });
-            setTimeout(() => playPrettySound(1318.51, 1.0, 'sine'), 600);
+            setTimeout(() => playPrettySound(1318.51, 1.0), 600);
+        }
+
+        function playMissSound() {
+            playPrettySound(293.66, 0.5);
+            setTimeout(() => playPrettySound(261.63, 0.5), 300);
+            setTimeout(() => playPrettySound(220.00, 0.8), 600);
+        }
+
+        function playGoodnightSound() {
+            [392.00, 349.23, 329.63, 293.66].forEach((note, i) => {
+                setTimeout(() => playPrettySound(note, 0.8, 'sine'), i * 400);
+            });
+            setTimeout(() => playPrettySound(261.63, 1.5), 1600);
+        }
+
+        function playSongSound() {
+            [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25, 659.25].forEach((note, i) => {
+                setTimeout(() => playPrettySound(note, 0.5), i * 200);
+            });
         }
 
         function startMusic() {
             initAudio();
             if (isMusicPlaying) return;
             isMusicPlaying = true;
-
             const notes = [261.63, 329.63, 392.00, 523.25];
             let noteIndex = 0;
-
             function playLoop() {
                 if (!isMusicPlaying) return;
-                
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                
                 osc.type = 'sine';
                 osc.frequency.value = notes[noteIndex % notes.length];
                 gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-                
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 1.5);
-                
                 noteIndex++;
                 setTimeout(playLoop, 800);
             }
             playLoop();
         }
 
-        function stopMusic() {
-            isMusicPlaying = false;
-        }
+        function stopMusic() { isMusicPlaying = false; }
 
         function showAppNotification(message, emoji = '💞') {
             const notification = document.getElementById('appNotification');
             notification.textContent = `${emoji} ${message}`;
             notification.classList.add('show');
-            
             clearTimeout(notification._timeout);
-            notification._timeout = setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
+            notification._timeout = setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        function createHearts() {
+            const container = document.getElementById('heartsContainer');
+            for (let i = 0; i < 10; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.textContent = ['💕','❤️','💖','💗','🌸'][Math.floor(Math.random() * 5)];
+                heart.style.left = Math.random() * 90 + '%';
+                heart.style.top = Math.random() * 50 + 50 + '%';
+                heart.style.animationDuration = (1.5 + Math.random()) + 's';
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 2500);
+            }
         }
 
         function createLoveHearts() {
             const container = document.getElementById('loveAnimation');
-            container.style.display = 'block';
-            
             for (let i = 0; i < 20; i++) {
                 const heart = document.createElement('div');
-                heart.className = 'love-heart';
+                heart.className = 'heart-particle';
                 heart.textContent = ['❤️','💖','💕','💗','💘'][Math.floor(Math.random() * 5)];
                 heart.style.left = Math.random() * 90 + '%';
                 heart.style.top = Math.random() * 50 + 50 + '%';
-                heart.style.animationDuration = (2 + Math.random() * 1) + 's';
+                heart.style.animationDuration = (2 + Math.random()) + 's';
                 container.appendChild(heart);
                 setTimeout(() => heart.remove(), 3000);
             }
-            
-            setTimeout(() => {
-                container.style.display = 'none';
-            }, 3000);
         }
 
+        function createSadAnimation() {
+            const container = document.getElementById('sadAnimation');
+            for (let i = 0; i < 8; i++) {
+                const sad = document.createElement('div');
+                sad.className = 'sad-particle';
+                sad.textContent = ['🥺','💔','😢','🌧️','💭'][Math.floor(Math.random() * 5)];
+                sad.style.left = Math.random() * 90 + '%';
+                sad.style.top = Math.random() * 50 + 50 + '%';
+                sad.style.animationDuration = (2.5 + Math.random()) + 's';
+                container.appendChild(sad);
+                setTimeout(() => sad.remove(), 3000);
+            }
+        }
+
+        // Создание звёзд и облаков
+        function createBackground() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starsContainer.appendChild(star);
+            }
+            setInterval(() => {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.textContent = '☁️';
+                cloud.style.top = Math.random() * 50 + '%';
+                cloud.style.animationDuration = (20 + Math.random() * 20) + 's';
+                starsContainer.appendChild(cloud);
+                setTimeout(() => cloud.remove(), 40000);
+            }, 5000);
+        }
+
+        // Тёмная тема
+        document.getElementById('themeBtn').addEventListener('click', () => {
+            document.body.classList.toggle('dark-theme');
+            document.getElementById('themeBtn').textContent = 
+                document.body.classList.contains('dark-theme') ? '☀️' : '🌙';
+        });
+
+        // Музыка
         document.getElementById('musicBtn').addEventListener('click', () => {
             if (isMusicPlaying) {
                 stopMusic();
@@ -448,22 +531,19 @@
             }
         });
 
+        // Определение пользователя
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
             myTelegramId = tg.initDataUnsafe.user.id;
-            
             if (myTelegramId == boyId) {
                 receiverTelegramId = girlId;
                 document.getElementById('info').textContent = 'Ты парень 💪';
             } else if (myTelegramId == girlId) {
                 receiverTelegramId = boyId;
                 document.getElementById('info').textContent = 'Ты девушка 🌸';
-            } else {
-                document.getElementById('info').textContent = 'Кто ты? 🤔';
             }
-        } else {
-            document.getElementById('info').textContent = 'Не в Telegram';
         }
 
+        // Счётчик дней
         function updateDaysCounter() {
             const now = new Date();
             const diff = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
@@ -477,142 +557,163 @@
         updateDaysCounter();
         setInterval(updateDaysCounter, 60000);
 
+        // Статистика
+        function updateStats(counters) {
+            const statsBar = document.getElementById('statsBar');
+            statsBar.innerHTML = `
+                <div class="stat-item">🤗 ${counters.hugs || 0}</div>
+                <div class="stat-item">❤️ ${counters.love || 0}</div>
+                <div class="stat-item">💐 ${counters.flowers || 0}</div>
+                <div class="stat-item">🥺 ${counters.miss || 0}</div>
+                <div class="stat-item">🌙 ${counters.goodnight || 0}</div>
+            `;
+        }
+
         if (myTelegramId) {
             socket.emit('register', myTelegramId);
         }
 
-        function createHearts() {
-            const container = document.getElementById('heartsContainer');
-            for (let i = 0; i < 10; i++) {
-                const heart = document.createElement('div');
-                heart.className = 'heart-particle';
-                heart.textContent = ['💕','❤️','💖','💗','🌸'][Math.floor(Math.random() * 5)];
-                heart.style.left = Math.random() * 90 + '%';
-                heart.style.top = Math.random() * 50 + 50 + '%';
-                heart.style.animationDuration = (1.5 + Math.random() * 1) + 's';
-                container.appendChild(heart);
-                setTimeout(() => heart.remove(), 2500);
-            }
-        }
-
+        // Отправка действий
         function sendAction(type) {
             if (!myTelegramId || !receiverTelegramId) {
                 showAppNotification('Не удалось определить пользователей', '⚠️');
                 return;
             }
             
-            let hugType = 'hug';
-            let sendMessage = 'Объятие отправлено';
-            
-            if (type === 'love') {
-                hugType = 'love';
-                sendMessage = 'Признание отправлено';
-            } else if (type === 'hand') {
-                hugType = 'hand';
-                sendMessage = 'Ты держишь меня за руку';
-            } else if (type === 'flower') {
-                hugType = 'flower';
-                sendMessage = 'Букет отправлен';
-            } else if (type === 'compliment') {
-                hugType = 'compliment';
-                sendMessage = 'Комплимент отправлен';
-            } else if (type === 'song') {
-                hugType = 'song';
-                sendMessage = 'Мелодия отправлена';
-            } else if (type === 'photo') {
+            if (type === 'capsule') {
+                openCapsuleModal();
+                return;
+            }
+            if (type === 'game') {
+                startGame();
+                return;
+            }
+            if (type === 'photo') {
                 socket.emit('get_photo', { requesterId: myTelegramId });
                 showAppNotification('Запрашиваю фото...', '📸');
                 return;
             }
             
-            if (type === 'love') {
-                playLoveSound();
-            } else if (type === 'hand') {
-                playHandSound();
-            } else if (type === 'song') {
-                playSongSound();
-            } else {
-                playSendSound();
-            }
+            const sounds = {
+                'love': playLoveSound,
+                'miss': playMissSound,
+                'goodnight': playGoodnightSound,
+                'song': playSongSound
+            };
+            
+            if (sounds[type]) sounds[type]();
+            else playSendSound();
             
             socket.emit('send_hug', {
                 senderId: myTelegramId,
                 receiverId: receiverTelegramId,
-                hugType: hugType
+                hugType: type
             });
             
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            showAppNotification(sendMessage, '💞');
+            showAppNotification('Отправлено!', '💞');
         }
 
+        // Капсула времени
+        function openCapsuleModal() {
+            document.getElementById('capsuleModal').classList.add('show');
+        }
+        function closeCapsuleModal() {
+            document.getElementById('capsuleModal').classList.remove('show');
+        }
+        function sendCapsule() {
+            const message = document.getElementById('capsuleMessage').value;
+            const date = document.getElementById('capsuleDate').value;
+            if (!message || !date) {
+                showAppNotification('Заполни все поля', '⚠️');
+                return;
+            }
+            socket.emit('create_capsule', {
+                senderId: myTelegramId,
+                receiverId: receiverTelegramId,
+                message: message,
+                openDate: new Date(date).getTime()
+            });
+            document.getElementById('capsuleMessage').value = '';
+            document.getElementById('capsuleDate').value = '';
+            closeCapsuleModal();
+            showAppNotification('Капсула отправлена!', '⏳');
+        }
+
+        // Мини-игра
+        function startGame() {
+            if (gameActive) return;
+            gameActive = true;
+            gameScore = 0;
+            document.getElementById('gameArea').classList.add('active');
+            document.getElementById('gameScore').textContent = 'Очки: 0';
+            
+            gameInterval = setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'game-heart';
+                heart.textContent = ['❤️','💖','💕','💗'][Math.floor(Math.random() * 4)];
+                heart.style.left = Math.random() * 90 + '%';
+                heart.style.top = '-50px';
+                heart.onclick = () => {
+                    gameScore++;
+                    document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
+                    heart.remove();
+                    playPrettySound(659.25, 0.2);
+                };
+                document.getElementById('gameArea').appendChild(heart);
+                setTimeout(() => heart.remove(), 2000);
+            }, 800);
+            
+            setTimeout(() => {
+                clearInterval(gameInterval);
+                gameActive = false;
+                document.getElementById('gameArea').classList.remove('active');
+                showAppNotification(`Игра окончена! Очки: ${gameScore}`, '🎮');
+            }, 30000);
+        }
+
+        // Обработка событий
         document.getElementById('bigHugBtn').addEventListener('click', () => sendAction('hug'));
-        document.querySelectorAll('.tenderness-btn, .love-btn').forEach(btn => {
+        document.querySelectorAll('.love-btn, .tenderness-btn').forEach(btn => {
             btn.addEventListener('click', () => sendAction(btn.dataset.type));
         });
 
-        // Обработка полученных сообщений
         function handleReceiveHug(data) {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-            
-            playReceiveSound();
             createHearts();
-
+            
+            const reactions = {
+                'hug': { emoji: '🤗', msg: 'Тебя крепко обняли!' },
+                'love': { emoji: '❤️', msg: 'Тебя любят! ❤️' },
+                'miss': { emoji: '🥺', msg: 'По тебе скучают!' },
+                'goodnight': { emoji: '🌙', msg: 'Спокойной ночи!' },
+                'hand': { emoji: '🫱', msg: 'Держит тебя за руку' },
+                'flower': { emoji: '💐', msg: 'Тебе подарили букет!' },
+                'compliment': { emoji: '💌', msg: compliments[Math.floor(Math.random() * compliments.length)] },
+                'song': { emoji: '🎵', msg: 'Тебе отправили мелодию!' }
+            };
+            
+            const reaction = reactions[data.type] || reactions['hug'];
+            
+            if (data.type === 'love') createLoveHearts();
+            if (data.type === 'miss') createSadAnimation();
+            if (data.type === 'goodnight') playGoodnightSound();
+            if (data.type === 'song') playSongSound();
+            if (data.type === 'love') playLoveSound();
+            if (data.type === 'miss') playMissSound();
+            
             const reactionDiv = document.getElementById('reaction');
+            reactionDiv.textContent = reaction.emoji;
             reactionDiv.style.display = 'block';
-            
-            let reactionEmoji = '🤗';
-            let notificationMessage = 'Тебя крепко обняли!';
-            
-            if (data.type === 'love') {
-                reactionEmoji = '❤️';
-                notificationMessage = 'Тебя любят! ❤️';
-                createLoveHearts();
-                playLoveSound();
-            } else if (data.type === 'hand') {
-                reactionEmoji = '🫱';
-                notificationMessage = 'Держит тебя за руку';
-                
-                const overlay = document.getElementById('handsOverlay');
-                const handsAnim = document.getElementById('handsAnimation');
-                overlay.style.display = 'block';
-                handsAnim.style.display = 'block';
-                handsAnim.style.animation = 'none';
-                handsAnim.offsetHeight;
-                handsAnim.style.animation = 'handsHold 1.5s ease forwards';
-                
-                setTimeout(() => playHandSound(), 200);
-                
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    handsAnim.style.display = 'none';
-                }, 1500);
-            } else if (data.type === 'flower') {
-                reactionEmoji = '💐';
-                notificationMessage = 'Тебе подарили букет!';
-            } else if (data.type === 'compliment') {
-                reactionEmoji = '💌';
-                notificationMessage = compliments[Math.floor(Math.random() * compliments.length)];
-            } else if (data.type === 'song') {
-                reactionEmoji = '🎵';
-                notificationMessage = 'Тебе отправили мелодию!';
-                playSongSound();
-            }
-            
-            reactionDiv.textContent = reactionEmoji;
             reactionDiv.style.animation = 'none';
             reactionDiv.offsetHeight;
             reactionDiv.style.animation = 'pop 0.6s ease';
-
-            setTimeout(() => {
-                reactionDiv.style.display = 'none';
-            }, 2000);
-
-            showAppNotification(notificationMessage, reactionEmoji);
+            setTimeout(() => reactionDiv.style.display = 'none', 2000);
+            
+            showAppNotification(reaction.msg, reaction.emoji);
         }
 
         socket.on('receive_hug', handleReceiveHug);
-
-        // Обработка очереди сообщений
         socket.on('queued_messages', (messages) => {
             if (messages && messages.length > 0) {
                 showAppNotification(`У тебя ${messages.length} новых сообщений!`, '💌');
@@ -621,16 +722,12 @@
                 });
             }
         });
-
+        socket.on('stats_update', updateStats);
         socket.on('photo_result', (data) => {
-            if (data.success) {
-                showAppNotification(data.message, '📸');
-            } else {
-                showAppNotification(data.message, '😢');
-            }
+            showAppNotification(data.message, data.success ? '📸' : '😢');
         });
 
-        socket.on('hug_sent', () => {});
+        createBackground();
     </script>
 </body>
 </html>
