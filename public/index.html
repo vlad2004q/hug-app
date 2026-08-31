@@ -28,12 +28,12 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* изменено: контейнер прижат к верху, но с отступом */
+            align-items: flex-start;
             user-select: none;
             overflow: hidden;
             position: relative;
             transition: background 0.5s;
-            padding-top: 80px; /* отступ сверху для безопасной зоны */
+            padding-top: 80px;
         }
         .stars {
             position: fixed;
@@ -60,7 +60,6 @@
             max-width: 420px;
             width: 100%;
             z-index: 10;
-            margin-top: 0;
         }
         .person-info {
             font-size: 20px;
@@ -144,7 +143,7 @@
         .love-btn:active { transform: scale(0.8); }
         .music-btn, .theme-btn {
             position: fixed;
-            top: 70px; /* было 15px, опустили ниже чёлки */
+            top: 70px;
             padding: 10px 12px;
             border: none;
             border-radius: 20px;
@@ -192,7 +191,7 @@
         }
         .app-notification {
             position: fixed;
-            top: 110px; /* опустили, чтобы не пересекаться с кнопками */
+            top: 110px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: var(--card);
@@ -222,25 +221,29 @@
             display: none;
             background: rgba(0,0,0,0.5);
             touch-action: manipulation;
-            padding-top: 70px; /* отступ для кнопок и счёта */
+            padding-top: 70px;
+            pointer-events: none; /* кликабельны только сердечки */
         }
-        .game-area.active { display: block; }
+        .game-area.active {
+            display: block;
+            pointer-events: auto;
+        }
         .game-heart {
             position: absolute;
-            font-size: 40px;
+            font-size: 50px; /* крупнее */
             cursor: pointer;
-            animation: gameHeart 2s linear forwards;
-            pointer-events: auto;
+            animation: gameHeart 3s linear forwards; /* медленнее */
             z-index: 36;
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
+            pointer-events: auto; /* только сердечки ловят клики */
         }
         @keyframes gameHeart {
-            0% { transform: translateY(-50px); opacity: 1; }
-            100% { transform: translateY(100vh); opacity: 1; }
+            0% { transform: translateY(-60px); opacity: 1; }
+            100% { transform: translateY(110vh); opacity: 1; }
         }
         .game-score {
             position: fixed;
@@ -251,6 +254,7 @@
             color: white;
             z-index: 37;
             font-weight: bold;
+            pointer-events: none;
         }
         .game-home-btn {
             position: fixed;
@@ -265,6 +269,7 @@
             font-size: 16px;
             cursor: pointer;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            pointer-events: auto;
         }
         .capsule-modal {
             position: fixed;
@@ -692,7 +697,7 @@
             showAppNotification('Отправлено!', '💞');
         }
 
-        // Игра
+        // Игра с делегированием
         function startGame() {
             if (gameActive) return;
             gameActive = true;
@@ -700,32 +705,19 @@
             document.getElementById('gameArea').classList.add('active');
             document.getElementById('gameScore').textContent = 'Очки: 0';
             
+            // Обработчик кликов на контейнере
+            const gameArea = document.getElementById('gameArea');
+            gameArea.addEventListener('click', gameAreaClickHandler);
+            
             gameInterval = setInterval(() => {
                 const heart = document.createElement('div');
                 heart.className = 'game-heart';
                 heart.textContent = ['❤️','💖','💕','💗'][Math.floor(Math.random() * 4)];
                 heart.style.left = Math.random() * 85 + '%';
-                heart.style.top = '-50px';
-                
-                heart.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    gameScore++;
-                    document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
-                    heart.remove();
-                    playPrettySound(659.25, 0.2);
-                });
-                
-                heart.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    gameScore++;
-                    document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
-                    heart.remove();
-                    playPrettySound(659.25, 0.2);
-                });
-                
-                document.getElementById('gameArea').appendChild(heart);
-                setTimeout(() => heart.remove(), 2000);
+                heart.style.top = '-60px';
+                gameArea.appendChild(heart);
+                // Удаляем сердечко после окончания анимации (3s)
+                setTimeout(() => heart.remove(), 3000);
             }, 800);
             
             setTimeout(() => {
@@ -734,10 +726,23 @@
             }, 30000);
         }
 
+        function gameAreaClickHandler(e) {
+            const heart = e.target.closest('.game-heart');
+            if (heart) {
+                gameScore++;
+                document.getElementById('gameScore').textContent = 'Очки: ' + gameScore;
+                heart.remove();
+                playPrettySound(659.25, 0.2);
+            }
+        }
+
         function stopGame() {
             clearInterval(gameInterval);
             gameActive = false;
             document.getElementById('gameArea').classList.remove('active');
+            document.getElementById('gameArea').removeEventListener('click', gameAreaClickHandler);
+            // Удаляем все оставшиеся сердечки
+            document.querySelectorAll('.game-heart').forEach(h => h.remove());
         }
 
         document.getElementById('gameHomeBtn').addEventListener('click', () => {
