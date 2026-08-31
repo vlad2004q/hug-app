@@ -18,19 +18,13 @@ const activeUsers = new Map();
 const messageQueue = { boy: [], girl: [] };
 const photos = { boy: [], girl: [] };
 
-// Счётчики (ключи должны совпадать с типами событий или быть сопоставлены)
-let counters = {
-    hugs: 0,
-    love: 0,
-    flowers: 0,
-    hands: 0,
-    songs: 0,
-    compliments: 0,
-    miss: 0,
-    goodnight: 0
-};
+// Счётчики
+let counters = { hugs: 0, love: 0, flowers: 0, hands: 0, songs: 0, compliments: 0, miss: 0, goodnight: 0 };
 
+// Капсулы времени
 const timeCapsules = { boy: [], girl: [] };
+
+// Рисование
 let drawingData = [];
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -38,30 +32,8 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-async function sendTelegramNotification(receiverId, hugType) {
-    if (!bot) return;
-    const messages = {
-        'hug': '🤗 Тебя крепко обняли!',
-        'hand': '🫱 Тебя держат за руку!',
-        'flower': '💐 Тебе подарили красивый букет!',
-        'compliment': '💌 Тебе отправили комплимент!',
-        'song': '🎵 Тебе отправили мелодию!',
-        'love': '❤️ Тебе отправили признание в любви!',
-        'miss': '🥺 По тебе скучают!',
-        'goodnight': '🌙 Тебе желают спокойной ночи!'
-    };
-    try {
-        await bot.telegram.sendMessage(receiverId, messages[hugType] || messages['hug'], {
-            reply_markup: {
-                inline_keyboard: [[
-                    { text: '💞 Открыть приложение', web_app: { url: 'https://hug-app.onrender.com' } }
-                ]]
-            }
-        });
-    } catch (err) {
-        console.error('Send error:', err.message);
-    }
-}
+// Функция отправки уведомлений в Telegram больше не нужна,
+// поэтому она удалена. Все реакции будут только внутри приложения.
 
 if (bot) {
     bot.on('photo', async (ctx) => {
@@ -125,8 +97,6 @@ io.on('connection', (socket) => {
         if (counters[counterKey] !== undefined) {
             counters[counterKey]++;
             console.log('Counter incremented:', counterKey, '=>', counters[counterKey]);
-        } else {
-            console.log('Unknown hugType:', hugType);
         }
         
         const receiverSocket = activeUsers.get(receiverId);
@@ -137,7 +107,7 @@ io.on('connection', (socket) => {
             queue.push({ type: hugType, from: senderId, timestamp: Date.now() });
         }
         
-        sendTelegramNotification(receiverId, hugType);
+        // УВЕДОМЛЕНИЕ В TELEGRAM УБРАНО
         socket.emit('hug_sent', { success: true });
         io.emit('stats_update', counters);
     });
