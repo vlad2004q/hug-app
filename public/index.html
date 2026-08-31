@@ -28,11 +28,12 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* изменено: контейнер прижат к верху, но с отступом */
             user-select: none;
             overflow: hidden;
             position: relative;
             transition: background 0.5s;
+            padding-top: 80px; /* отступ сверху для безопасной зоны */
         }
         .stars {
             position: fixed;
@@ -59,12 +60,14 @@
             max-width: 420px;
             width: 100%;
             z-index: 10;
+            margin-top: 0;
         }
         .person-info {
             font-size: 20px;
             font-weight: 600;
             color: var(--text);
             margin-bottom: 10px;
+            margin-top: 10px;
         }
         .days-counter {
             font-size: 14px;
@@ -141,7 +144,7 @@
         .love-btn:active { transform: scale(0.8); }
         .music-btn, .theme-btn {
             position: fixed;
-            top: 15px;
+            top: 70px; /* было 15px, опустили ниже чёлки */
             padding: 10px 12px;
             border: none;
             border-radius: 20px;
@@ -189,7 +192,7 @@
         }
         .app-notification {
             position: fixed;
-            top: 80px;
+            top: 110px; /* опустили, чтобы не пересекаться с кнопками */
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: var(--card);
@@ -203,10 +206,10 @@
             transition: transform 0.5s;
             max-width: 85%;
             text-align: center;
-            display: none;  /* добавлено */
+            display: none;
         }
         .app-notification.show {
-            display: block;  /* добавлено */
+            display: block;
             transform: translateX(-50%) translateY(0);
         }
         .game-area {
@@ -219,6 +222,7 @@
             display: none;
             background: rgba(0,0,0,0.5);
             touch-action: manipulation;
+            padding-top: 70px; /* отступ для кнопок и счёта */
         }
         .game-area.active { display: block; }
         .game-heart {
@@ -240,7 +244,7 @@
         }
         .game-score {
             position: fixed;
-            top: 50px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 24px;
@@ -250,7 +254,7 @@
         }
         .game-home-btn {
             position: fixed;
-            top: 50px;
+            top: 80px;
             right: 20px;
             z-index: 38;
             padding: 10px 15px;
