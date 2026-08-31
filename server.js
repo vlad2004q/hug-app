@@ -4,14 +4,10 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const { Telegraf } = require('telegraf');
-const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-
-// Определяем, где запущено
-const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
 
 // Создаём бота только если есть токен
 let bot = null;
@@ -24,35 +20,15 @@ const activeUsers = new Map();
 
 // Очередь сообщений для офлайн-пользователей
 const messageQueue = {
-    boy: [],   // Очередь для парня
-    girl: []   // Очередь для девушки
-};
-
-// Хранилище фотографий
-const photos = {
     boy: [],
     girl: []
 };
 
-// Загружаем сохранённые фото
-try {
-    if (fs.existsSync('photos.json')) {
-        const data = JSON.parse(fs.readFileSync('photos.json', 'utf8'));
-        photos.boy = data.boy || [];
-        photos.girl = data.girl || [];
-    }
-} catch (err) {
-    console.error('Error loading photos:', err.message);
-}
-
-// Сохранение фото
-function savePhotos() {
-    try {
-        fs.writeFileSync('photos.json', JSON.stringify(photos));
-    } catch (err) {
-        console.error('Error saving photos:', err.message);
-    }
-}
+// Хранилище фотографий (в памяти)
+const photos = {
+    boy: [],
+    girl: []
+};
 
 // Раздаём статику
 app.use(express.static(path.join(__dirname, 'public')));
@@ -100,13 +76,15 @@ if (bot) {
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
+        console.log(`Photo received from ${userId}, fileId: ${fileId}`);
+        
         if (userId === boyId) {
             photos.boy.push(fileId);
-            savePhotos();
+            console.log(`Boy photos count: ${photos.boy.length}`);
             await ctx.reply('📸 Фото сохранено! Теперь твоя девушка может увидеть его, нажав на кнопку «Фото» в приложении.');
         } else if (userId === girlId) {
             photos.girl.push(fileId);
-            savePhotos();
+            console.log(`Girl photos count: ${photos.girl.length}`);
             await ctx.reply('📸 Фото сохранено! Теперь твой парень может увидеть его, нажав на кнопку «Фото» в приложении.');
         } else {
             await ctx.reply('Я тебя не знаю. Ты не парень и не девушка из этого приложения.');
@@ -122,7 +100,6 @@ io.on('connection', (socket) => {
         activeUsers.set(telegramId, socket);
         console.log(`User ${telegramId} registered`);
         
-        // Отправляем все накопленные сообщения из очереди
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
@@ -146,7 +123,6 @@ io.on('connection', (socket) => {
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
-        // Отправляем через WebSocket, если получатель онлайн
         const receiverSocket = activeUsers.get(receiverId);
         if (receiverSocket) {
             receiverSocket.emit('receive_hug', {
@@ -155,7 +131,6 @@ io.on('connection', (socket) => {
                 timestamp: Date.now()
             });
         } else {
-            // Если получатель офлайн, добавляем в очередь
             if (receiverId === boyId) {
                 messageQueue.boy.push({
                     type: hugType,
@@ -171,10 +146,7 @@ io.on('connection', (socket) => {
             }
         }
 
-        // Отправляем уведомление через бота
         sendTelegramNotification(receiverId, hugType);
-
-        // Подтверждение отправителю
         socket.emit('hug_sent', { success: true });
     });
 
@@ -186,6 +158,9 @@ io.on('connection', (socket) => {
         
         let photoList = [];
         let receiverId = null;
+        
+        console.log(`Photo request from ${requesterId}`);
+        console.log(`Boy photos: ${photos.boy.length}, Girl photos: ${photos.girl.length}`);
         
         if (requesterId === boyId) {
             photoList = photos.girl;
@@ -204,6 +179,7 @@ io.on('connection', (socket) => {
         }
         
         const randomPhoto = photoList[Math.floor(Math.random() * photoList.length)];
+        console.log(`Sending photo ${randomPhoto} to ${receiverId}`);
         
         if (bot) {
             try {
