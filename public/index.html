@@ -199,7 +199,6 @@
                 transform: translate(-50%, -50%) scale(1.5);
             }
         }
-        /* Внутренние уведомления */
         .app-notification {
             position: fixed;
             top: 20px;
@@ -239,9 +238,10 @@
 
         <div class="tenderness-buttons">
             <button class="tenderness-btn" data-type="hand">🫱 Держу за руку</button>
-            <button class="tenderness-btn" data-type="flower">🌸 Цветок</button>
+            <button class="tenderness-btn" data-type="flower">💐 Букет</button>
             <button class="tenderness-btn" data-type="compliment">💌 Комплимент</button>
             <button class="tenderness-btn" data-type="song">🎵 Наша песня</button>
+            <button class="tenderness-btn" data-type="photo">📸 Фото</button>
         </div>
 
         <div class="reaction" id="reaction"></div>
@@ -262,10 +262,8 @@
         const boyId = 1449436021;
         const girlId = 5126602356;
 
-        // Дата начала отношений (измените на свою)
         const startDate = new Date('2026-01-01');
 
-        // Список комплиментов
         const compliments = [
             'Ты — моё самое любимое чудо ✨',
             'Твоя улыбка способна растопить любое сердце 💕',
@@ -275,7 +273,6 @@
             'Твои глаза — мой самый любимый океан 🌊'
         ];
 
-        // Audio Context
         let audioCtx = null;
         let isMusicPlaying = false;
 
@@ -322,6 +319,17 @@
             setTimeout(() => playPrettySound(196.00, 0.8, 'sine'), 500);
         }
 
+        function playSongSound() {
+            const melody = [
+                523.25, 659.25, 783.99, 1046.50,
+                783.99, 659.25, 523.25, 659.25
+            ];
+            melody.forEach((note, i) => {
+                setTimeout(() => playPrettySound(note, 0.5, 'sine'), i * 200);
+            });
+            setTimeout(() => playPrettySound(392.00, 1.0, 'sine'), 1600);
+        }
+
         function startMusic() {
             initAudio();
             if (isMusicPlaying) return;
@@ -356,7 +364,6 @@
             isMusicPlaying = false;
         }
 
-        // Внутреннее уведомление
         function showAppNotification(message, emoji = '💞') {
             const notification = document.getElementById('appNotification');
             notification.textContent = `${emoji} ${message}`;
@@ -439,17 +446,24 @@
                 sendMessage = 'Ты держишь меня за руку';
             } else if (type === 'flower') {
                 hugType = 'flower';
-                sendMessage = 'Цветок отправлен';
+                sendMessage = 'Букет отправлен';
             } else if (type === 'compliment') {
                 hugType = 'compliment';
                 sendMessage = 'Комплимент отправлен';
             } else if (type === 'song') {
                 hugType = 'song';
                 sendMessage = 'Мелодия отправлена';
+            } else if (type === 'photo') {
+                // Запрос фото
+                socket.emit('get_photo', { requesterId: myTelegramId });
+                showAppNotification('Запрашиваю фото...', '📸');
+                return;
             }
             
             if (type === 'hand') {
                 playHandSound();
+            } else if (type === 'song') {
+                playSongSound();
             } else {
                 playSendSound();
             }
@@ -500,14 +514,15 @@
                     handsAnim.style.display = 'none';
                 }, 1500);
             } else if (data.type === 'flower') {
-                reactionEmoji = '🌸';
-                notificationMessage = 'Тебе подарили цветок!';
+                reactionEmoji = '💐';
+                notificationMessage = 'Тебе подарили букет!';
             } else if (data.type === 'compliment') {
                 reactionEmoji = '💌';
                 notificationMessage = compliments[Math.floor(Math.random() * compliments.length)];
             } else if (data.type === 'song') {
                 reactionEmoji = '🎵';
                 notificationMessage = 'Тебе отправили мелодию!';
+                playSongSound();
             }
             
             reactionDiv.textContent = reactionEmoji;
@@ -520,6 +535,14 @@
             }, 2000);
 
             showAppNotification(notificationMessage, reactionEmoji);
+        });
+
+        socket.on('photo_result', (data) => {
+            if (data.success) {
+                showAppNotification(data.message, '📸');
+            } else {
+                showAppNotification(data.message, '😢');
+            }
         });
 
         socket.on('hug_sent', () => {});
