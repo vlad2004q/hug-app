@@ -22,13 +22,19 @@ if (process.env.BOT_TOKEN) {
 // Активные пользователи
 const activeUsers = new Map();
 
-// Хранилище фотографий
-const photos = {
-    boy: [],   // Фото парня
-    girl: []   // Фото девушки
+// Очередь сообщений для офлайн-пользователей
+const messageQueue = {
+    boy: [],   // Очередь для парня
+    girl: []   // Очередь для девушки
 };
 
-// Загружаем сохранённые фото (если есть)
+// Хранилище фотографий
+const photos = {
+    boy: [],
+    girl: []
+};
+
+// Загружаем сохранённые фото
 try {
     if (fs.existsSync('photos.json')) {
         const data = JSON.parse(fs.readFileSync('photos.json', 'utf8'));
@@ -64,7 +70,8 @@ async function sendTelegramNotification(receiverId, hugType) {
         'hand': '🫱 Тебя держат за руку!',
         'flower': '💐 Тебе подарили красивый букет!',
         'compliment': '💌 Тебе отправили комплимент!',
-        'song': '🎵 Тебе отправили мелодию!'
+        'song': '🎵 Тебе отправили мелодию!',
+        'love': '❤️ Тебе отправили признание в любви!'
     };
     
     try {
@@ -87,11 +94,9 @@ if (bot) {
         const userId = ctx.from.id;
         const photo = ctx.message.photo;
         
-        // Берём самое большое фото
         const largestPhoto = photo[photo.length - 1];
         const fileId = largestPhoto.file_id;
         
-        // Определяем, кто отправил
         const boyId = Number(process.env.BOYFRIEND_ID);
         const girlId = Number(process.env.GIRLFRIEND_ID);
         
@@ -116,12 +121,31 @@ io.on('connection', (socket) => {
     socket.on('register', (telegramId) => {
         activeUsers.set(telegramId, socket);
         console.log(`User ${telegramId} registered`);
+        
+        // Отправляем все накопленные сообщения из очереди
+        const boyId = Number(process.env.BOYFRIEND_ID);
+        const girlId = Number(process.env.GIRLFRIEND_ID);
+        
+        if (telegramId === boyId && messageQueue.boy.length > 0) {
+            const queue = [...messageQueue.boy];
+            messageQueue.boy = [];
+            socket.emit('queued_messages', queue);
+            console.log(`Sent ${queue.length} queued messages to boy`);
+        } else if (telegramId === girlId && messageQueue.girl.length > 0) {
+            const queue = [...messageQueue.girl];
+            messageQueue.girl = [];
+            socket.emit('queued_messages', queue);
+            console.log(`Sent ${queue.length} queued messages to girl`);
+        }
     });
 
     socket.on('send_hug', (data) => {
         const { senderId, receiverId, hugType } = data;
         console.log(`Hug ${hugType} from ${senderId} to ${receiverId}`);
 
+        const boyId = Number(process.env.BOYFRIEND_ID);
+        const girlId = Number(process.env.GIRLFRIEND_ID);
+        
         // Отправляем через WebSocket, если получатель онлайн
         const receiverSocket = activeUsers.get(receiverId);
         if (receiverSocket) {
@@ -130,9 +154,24 @@ io.on('connection', (socket) => {
                 from: senderId,
                 timestamp: Date.now()
             });
+        } else {
+            // Если получатель офлайн, добавляем в очередь
+            if (receiverId === boyId) {
+                messageQueue.boy.push({
+                    type: hugType,
+                    from: senderId,
+                    timestamp: Date.now()
+                });
+            } else if (receiverId === girlId) {
+                messageQueue.girl.push({
+                    type: hugType,
+                    from: senderId,
+                    timestamp: Date.now()
+                });
+            }
         }
 
-        // Отправляем уведомление через бота (если получатель офлайн)
+        // Отправляем уведомление через бота
         sendTelegramNotification(receiverId, hugType);
 
         // Подтверждение отправителю
@@ -149,11 +188,9 @@ io.on('connection', (socket) => {
         let receiverId = null;
         
         if (requesterId === boyId) {
-            // Парень запрашивает фото девушки
             photoList = photos.girl;
             receiverId = boyId;
         } else if (requesterId === girlId) {
-            // Девушка запрашивает фото парня
             photoList = photos.boy;
             receiverId = girlId;
         }
@@ -166,10 +203,8 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Выбираем случайное фото
         const randomPhoto = photoList[Math.floor(Math.random() * photoList.length)];
         
-        // Отправляем фото через бота
         if (bot) {
             try {
                 await bot.telegram.sendPhoto(receiverId, randomPhoto);
@@ -184,11 +219,6 @@ io.on('connection', (socket) => {
                     message: 'Не удалось отправить фото. Попробуй ещё раз.' 
                 });
             }
-        } else {
-            socket.emit('photo_result', { 
-                success: false, 
-                message: 'Бот недоступен.' 
-            });
         }
     });
 
