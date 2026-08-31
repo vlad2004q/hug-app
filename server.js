@@ -86,7 +86,13 @@ function getHugMessage(type, senderId) {
 bot.start((ctx) => ctx.reply(`Твой Telegram ID: ${ctx.from.id}`));
 
 // Запуск бота
-bot.launch();
+// Запускаем бота только если это не Render или если это первый инстанс
+if (process.env.RENDER && process.env.RENDER_INSTANCE_COUNT > 1) {
+    console.log('Render multi-instance mode: bot polling disabled');
+} else {
+    bot.launch();
+    console.log('Bot polling started');
+}
 
 // Запуск сервера
 server.listen(process.env.PORT, () => {
